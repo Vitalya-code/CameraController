@@ -1,17 +1,21 @@
 import math
 import os
 import sys
+import tempfile
 import threading
 import time
 import pyvirtualcam
 import qdarkstyle
 from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton,QLabel, QFileDialog
+from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
+    QFileDialog, QCheckBox
 import cv2
+import configparser
 
-mainFiles = []
+
 folderDest = ""
 iconsizeX = 350
 iconsizeY = 200
@@ -19,7 +23,13 @@ maxInFieald = 5
 oldmaxInFieald = 5
 
 try:
-    os.mkdir("img")
+    global maindir
+    maindir = os.environ.get('temp')+"\img"
+    os.mkdir(os.environ.get('temp')+"\img")
+
+
+
+
     osName = os.uname()
     if str(osName[0]) == "Linux":
         os.system("sudo modprobe -r v4l2loopback")
@@ -38,40 +48,57 @@ class Main(QWidget):
     def closeEvent(self, event):
         global run
         run = False
-        time.sleep(0.1)
-        #event.ignore()
-
+        checkBox.setChecked(False)
+        time.sleep(0.5)
 
     def resizeEvent(self, event):
         width = scrollArea.frameGeometry().width()
         global maxInFieald
         maxInFieald = (math.floor(width / iconsizeX))
-
         if maxInFieald != oldmaxInFieald and maxInFieald != 0:
-            gui_restart()
+            try:
+                gui_restart(mainFiles)
+            except:
+                pass
 
     def initUI(self):
-        self.setGeometry(1000, 500, 1000, 500)
+        self.setGeometry(800, 500, 800, 500)
         self.setWindowTitle('CameraController')
         self.setStyleSheet(qdarkstyle.load_stylesheet())
         self.resized.connect(self.resizeEvent)
+        self.setWindowIcon(QIcon('ico.ico'))
 
-        #Main Layout
+        # Main Layout
         global layout
         layout = QGridLayout()
-        #Top Buttons Layout
+
+        # Status bar
+        global statusbar
+        statusbar = QLabel()
+        statusbar.setDisabled(True)
+        layout.addWidget(statusbar,6,0)
+
+
+        # Top Buttons Layout
         layoutButtons = QHBoxLayout()
+
+        #BrowseButton
         browseBtn = QPushButton("Browse")
-        browseBtn.setFixedSize(60,20)
+        browseBtn.setFixedSize(60, 20)
         browseBtn.clicked.connect(onbrowseBtn)
+
+        #label
         global label
         label = QLabel("Please choose your folder with videos")
 
-        layoutButtons.addWidget(browseBtn)
-        layoutButtons.addWidget(label)
-        layout.addLayout(layoutButtons,2,0)
+        #CheckBox
+        global checkBox
+        checkBox = QCheckBox("Repeat video")
 
-        #scroll area
+
+
+
+        # scroll area
         global scrollArea
         scrollArea = QScrollArea()
         scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -82,22 +109,49 @@ class Main(QWidget):
         lay = QGridLayout(content_widget)
         lay.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
-        gui_restart()
 
+        #add layouts
+        layoutButtons.addWidget(browseBtn)
+        layoutButtons.addWidget(label)
+        layoutButtons.addWidget(checkBox, Qt.AlignLeft)
+        layout.addLayout(layoutButtons, 2, 0)
+        layout.addWidget(scrollArea, 4, 0)
 
-        layout.addWidget(scrollArea,4,0)
         self.setLayout(layout)
+
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        try:
+            onbrowseBtn(folder=config['settings']["old_path_to_folder"])
+        except:
+            pass
+
         self.show()
 
 
 
 
-def onbrowseBtn():
+
+
+def onbrowseBtn(folder=None):
     global folderDest
-    folderDest = QFileDialog.getExistingDirectory()
+    if folder != False:
+        folderDest = folder
+    else:
+        folderDest = QFileDialog.getExistingDirectory()
+
+    config = configparser.ConfigParser()
+    config['settings'] = {}
+    config['settings']['old_path_to_folder'] = folderDest
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
+
     if folderDest != "":
         label.setText(folderDest)
         readfiles = os.listdir(folderDest)
+
+        global mainFiles
+        mainFiles = []
         for i in readfiles:
             filename, file_extension = os.path.splitext(i)
             if file_extension == ".mp4":
@@ -107,46 +161,56 @@ def onbrowseBtn():
             filename, file_extension = os.path.splitext(i)
             vidcap = cv2.VideoCapture(str(folderDest) + "/" + str(i))
             success, image = vidcap.read()
-            cv2.imwrite("img/" + filename + ".jpg", image)
-            gui_restart()
+            success, im_buf_arr = cv2.imencode(".jpg", image)
+            if success:
+                im_buf_arr.tofile(maindir + filename + ".jpg")
 
-def gui_restart():
+        gui_restart(mainFiles)
+
+
+def gui_restart(mainFiles):
     for i in reversed(range(lay.count())):
         lay.itemAt(i).widget().setParent(None)
 
     count = 0
     global buttons
     buttons = []
+
     for i in mainFiles:
         filename = os.path.splitext(i)[0]
         button = QPushButton()
-        button.clicked.connect(lambda ch, text=count: onSelect(text))
-        button.setIcon(QIcon("img/" + filename + ".jpg"))
+        label = QLabel()
+        button.setToolTip(filename + ".mp4")
+        button.clicked.connect(lambda ch, buttonCount=count: onSelect(buttonCount))
+        button.setIcon(QIcon(maindir + filename + ".jpg"))
         button.setIconSize(QSize(iconsizeX, iconsizeY))
         button.setMinimumSize(iconsizeX, iconsizeY)
         button.setMaximumSize(iconsizeX, iconsizeY)
         global oldmaxInFieald
         oldmaxInFieald = maxInFieald
+
         out = count / maxInFieald
         out = (math.floor(out))
         lay.addWidget(button, out, count - out * maxInFieald)
+
+
+
         count = count + 1
         buttons.append(button)
 
 
-def onSelect(text):
-    global but
-    global status
-    status = text
-    but = buttons[text]
+
+def onSelect(buttonCount):
+    global butObj
+    butObj = buttons[buttonCount]
+    StartVideo(folderDest + "/" + mainFiles[buttonCount])
 
 
-    StartVideo(folderDest+"/"+mainFiles[text])
+    statusbar.setText(mainFiles[buttonCount])
 
 
-    for i in buttons:
-        i.setDisabled(False)
-    but.setDisabled(True)
+
+
 
 
 def StartVideo(filename):
@@ -154,20 +218,22 @@ def StartVideo(filename):
     run = False
     time.sleep(0.1)
     run = True
+
     x = threading.Thread(target=mainThread, args=(filename,))
     x.start()
 
 
-
 def mainThread(filename):
-
     cap = cv2.VideoCapture(filename)
     frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frameFPS = int(cap.get(cv2.CAP_PROP_FPS))
 
-   # cam = pyvirtualcam.Camera(width=frameWidth, height=frameHeight, fps=frameFPS)
+    print(frameFPS)
+
+    global cam
+    #cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
     cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
 
     i = 0
@@ -176,8 +242,18 @@ def mainThread(filename):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         cam.send(frame)
         cam.sleep_until_next_frame()
-        i =+ 1
+        i = i + 1
 
+    cam.close()
+
+    time.sleep(0.1)
+
+
+    repeat = checkBox.isChecked()
+
+    if repeat == True:
+        x = threading.Thread(target=mainThread, args=(filename,))
+        x.start()
 
 
 
@@ -185,3 +261,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Main()
     sys.exit(app.exec_())
+
