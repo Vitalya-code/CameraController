@@ -1,17 +1,16 @@
 import math
 import os
 import sys
-import tempfile
 import threading
 import time
 import pyvirtualcam
 import qdarkstyle
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox
+    QFileDialog, QCheckBox, QSlider, QMessageBox
 import cv2
 import configparser
 
@@ -21,14 +20,13 @@ iconsizeX = 350
 iconsizeY = 200
 maxInFieald = 5
 oldmaxInFieald = 5
+isSliderConnected = True
 
+#init in system
 try:
-    global maindir
+    #global maindir
     maindir = os.environ.get('temp')+"\img"
     os.mkdir(os.environ.get('temp')+"\img")
-
-
-
 
     osName = os.uname()
     if str(osName[0]) == "Linux":
@@ -46,8 +44,7 @@ class Main(QWidget):
         self.initUI()
 
     def closeEvent(self, event):
-        global run
-        run = False
+        stopVideo()
         checkBox.setChecked(False)
         time.sleep(0.5)
 
@@ -61,6 +58,25 @@ class Main(QWidget):
             except:
                 pass
 
+
+    def sldReconnect(self):
+        global isSliderConnected
+        isSliderConnected = True
+        stopVideo(0.5)
+        currentFrame = math.ceil(self.sender().value() / 100 * frameCount)
+        #print(currentFrame)
+        startVideo(config.get("settings", "oldfile"), currentFrame)
+
+
+
+
+    def sldDisconnect(self):
+        global isSliderConnected
+        isSliderConnected = False
+
+
+
+
     def initUI(self):
         self.setGeometry(800, 500, 800, 500)
         self.setWindowTitle('CameraController')
@@ -72,15 +88,21 @@ class Main(QWidget):
         global layout
         layout = QGridLayout()
 
+        # Top Buttons Layout
+        topLayout = QHBoxLayout()
+
+        # Bot status layout
+        botLayout = QHBoxLayout()
+
         # Status bar
+
         global statusbar
         statusbar = QLabel()
         statusbar.setDisabled(True)
-        layout.addWidget(statusbar,6,0)
+        botLayout.addWidget(statusbar)
 
 
-        # Top Buttons Layout
-        layoutButtons = QHBoxLayout()
+
 
         #BrowseButton
         browseBtn = QPushButton("Browse")
@@ -96,6 +118,16 @@ class Main(QWidget):
         checkBox = QCheckBox("Repeat video")
 
 
+        global slider
+        slider = QSlider(Qt.Horizontal)
+        slider.setHidden(True)
+        #slider.valueChanged.connect(self.sliderChanged)
+        slider.sliderPressed.connect(self.sldDisconnect)
+        slider.sliderReleased.connect(self.sldReconnect)
+
+
+        global timeCount
+        timeCount = QLabel()
 
 
         # scroll area
@@ -110,21 +142,28 @@ class Main(QWidget):
         lay.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
 
-        #add layouts
-        layoutButtons.addWidget(browseBtn)
-        layoutButtons.addWidget(label)
-        layoutButtons.addWidget(checkBox, Qt.AlignLeft)
-        layout.addLayout(layoutButtons, 2, 0)
+        #add widgets
+        topLayout.addWidget(browseBtn)
+        topLayout.addWidget(label)
+        topLayout.addWidget(checkBox,Qt.AlignLeft)
+        botLayout.addWidget(timeCount)
+        botLayout.addWidget(slider)
+        layout.addLayout(topLayout, 2, 0)
         layout.addWidget(scrollArea, 4, 0)
+        layout.addLayout(botLayout, 6, 0)
+
+
 
         self.setLayout(layout)
 
+        global config
         config = configparser.ConfigParser()
         config.read('config.ini')
         try:
             onbrowseBtn(folder=config['settings']["old_path_to_folder"])
         except:
             pass
+
 
         self.show()
 
@@ -203,62 +242,88 @@ def gui_restart(mainFiles):
 def onSelect(buttonCount):
     global butObj
     butObj = buttons[buttonCount]
-    StartVideo(folderDest + "/" + mainFiles[buttonCount])
+    startVideo(folderDest + "/" + mainFiles[buttonCount])
 
 
     statusbar.setText(mainFiles[buttonCount])
 
 
-
-
-
-
-def StartVideo(filename):
-    global run
-    run = False
-    time.sleep(0.1)
-    run = True
-
-    x = threading.Thread(target=mainThread, args=(filename,))
+def startVideo(filename, currentFrame = 0):
+    stopVideo()
+    x = threading.Thread(target=mainThread, args=(filename, currentFrame))
     x.start()
 
+def stopVideo(delay = 0.1):
+    try:
+        global run
+        run = False
+        time.sleep(delay)
+        run = True
+        cam.close()
+    except:
+        pass
 
-def mainThread(filename):
+
+
+def mainThread(filename, currentFrame):
+    global frameCount
+    global cam
+
     cap = cv2.VideoCapture(filename)
     frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frameFPS = int(cap.get(cv2.CAP_PROP_FPS))
 
-    print(frameFPS)
 
-    global cam
-    #cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
+    config.set("settings", "oldfile", filename)
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
     cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
 
-    i = 0
-    while i < frameCount and run == True:
+
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES,currentFrame)
+    while currentFrame < frameCount and run == True:
+        slider.setHidden(False)
+
+        timeCount.setText(str(math.ceil(currentFrame/frameFPS))+"/"+str(math.ceil(frameCount/frameFPS))+" sec")
+        if isSliderConnected == True:
+            slider.setValue(math.ceil(currentFrame/frameCount*100))
+
         _, frame = cap.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         cam.send(frame)
         cam.sleep_until_next_frame()
-        i = i + 1
+        currentFrame = currentFrame + 1
 
     cam.close()
-
     time.sleep(0.1)
 
 
-    repeat = checkBox.isChecked()
 
-    if repeat == True:
+    repeat = checkBox.isChecked()
+    if repeat:
         x = threading.Thread(target=mainThread, args=(filename,))
         x.start()
 
 
-
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = Main()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+        ex = Main()
+        sys.exit(app.exec_())
+    except Exception as exc:
+        #print(exc)
+        msg = QMessageBox()
+        msg.setWindowIcon(QIcon("ico.ico"))
+        msg.setText("Error                                                 ")
+        msg.setInformativeText(str(exc))
+        msg.setWindowTitle("CameraController")
+        msg.exec_()
+
+
+
+
+
 
