@@ -11,6 +11,7 @@ DisableWelcomePage=no
 UserInfoPage=no
 DisableDirPage=no
 DisableProgramGroupPage=no
+OutputBaseFilename=CameraController
 
 [Files]
 Source: "main.pyw"; DestDir: "{app}"
