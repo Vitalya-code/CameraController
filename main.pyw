@@ -301,7 +301,7 @@ def mainThread(filename, currentFrame):
         currentFrame = currentFrame + 1
 
 
-    stopVideo()
+    stopVideo(1)
     if checkBox.isChecked():
         #stopVideo(0.5)
         startVideo(config.get("settings", "oldfile"), 0)
