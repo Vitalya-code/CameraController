@@ -5,12 +5,12 @@ import threading
 import time
 import pyvirtualcam
 import qdarkstyle
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox, QSlider, QMessageBox
+    QFileDialog, QCheckBox, QSlider
 import cv2
 import configparser
 
@@ -64,7 +64,6 @@ class Main(QWidget):
         isSliderConnected = True
         stopVideo(0.5)
         currentFrame = math.ceil(self.sender().value() / 100 * frameCount)
-        #print(currentFrame)
         startVideo(config.get("settings", "oldfile"), currentFrame)
 
 
@@ -249,11 +248,13 @@ def onSelect(buttonCount):
 
 
 def startVideo(filename, currentFrame = 0):
-    stopVideo()
+    stopVideo(1)
     x = threading.Thread(target=mainThread, args=(filename, currentFrame))
     x.start()
 
-def stopVideo(delay = 0.1):
+
+
+def stopVideo(delay = 0.5):
     try:
         global run
         run = False
@@ -279,11 +280,13 @@ def mainThread(filename, currentFrame):
     config.set("settings", "oldfile", filename)
     with open('config.ini', 'w') as configfile:
         config.write(configfile)
+
+
     cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
 
 
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES,currentFrame)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, currentFrame)
     while currentFrame < frameCount and run == True:
         slider.setHidden(False)
 
@@ -297,30 +300,19 @@ def mainThread(filename, currentFrame):
         cam.sleep_until_next_frame()
         currentFrame = currentFrame + 1
 
-    cam.close()
-    time.sleep(0.1)
 
+    stopVideo()
+    if checkBox.isChecked():
+        #stopVideo(0.5)
+        startVideo(config.get("settings", "oldfile"), 0)
 
-
-    repeat = checkBox.isChecked()
-    if repeat:
-        x = threading.Thread(target=mainThread, args=(filename,))
-        x.start()
 
 
 if __name__ == '__main__':
-    try:
-        app = QApplication(sys.argv)
-        ex = Main()
-        sys.exit(app.exec_())
-    except Exception as exc:
-        #print(exc)
-        msg = QMessageBox()
-        msg.setWindowIcon(QIcon("ico.ico"))
-        msg.setText("Error                                                 ")
-        msg.setInformativeText(str(exc))
-        msg.setWindowTitle("CameraController")
-        msg.exec_()
+    app = QApplication(sys.argv)
+    ex = Main()
+    sys.exit(app.exec_())
+
 
 
 
