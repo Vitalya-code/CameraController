@@ -1,2 +1,2 @@
 start pip install -r requirements.txt 
-start pythonw main.pyw
+start pythonw main.py

@@ -18,7 +18,7 @@ Source: "main.pyw"; DestDir: "{app}"
 Source: "requirements.txt"; DestDir: "{app}"
 Source: "ico.ico"; DestDir: "{app}"
 Source: "start.bat"; DestDir: "{app}";
-Source: "start"; DestDir: "{app}"; 
+Source: "start.sh"; DestDir: "{app}"; 
 Source: "python-3.9.7.exe"; DestDir: "{app}"; Flags: deleteafterinstall;  
 
 [Icons]

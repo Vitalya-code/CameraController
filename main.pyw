@@ -10,24 +10,27 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox, QSlider
+    QFileDialog, QCheckBox, QSlider, QLineEdit
 import cv2
 import configparser
+import shutil
 
 
 folderDest = ""
 iconsizeX = 350
 iconsizeY = 200
-maxInFieald = 5
-oldmaxInFieald = 5
 isSliderConnected = True
 
-#init in system
-try:
-    #global maindir
-    maindir = os.environ.get('temp')+"\img"
-    os.mkdir(os.environ.get('temp')+"\img")
+appStyle="""
+QMainWindow{
+background-color: darkgray;
+}
+"""
 
+# init in system
+try:
+    maindir = os.environ.get('temp') + "\img"
+    os.mkdir(os.environ.get('temp') + "\img")
     osName = os.uname()
     if str(osName[0]) == "Linux":
         os.system("sudo modprobe -r v4l2loopback")
@@ -44,278 +47,275 @@ class Main(QWidget):
         self.initUI()
 
     def closeEvent(self, event):
-        stopVideo()
-        checkBox.setChecked(False)
+        self.stopVideo()
+        self.checkBox.setChecked(False)
         time.sleep(0.5)
 
     def resizeEvent(self, event):
-        width = scrollArea.frameGeometry().width()
-        global maxInFieald
-        maxInFieald = (math.floor(width / iconsizeX))
-        if maxInFieald != oldmaxInFieald and maxInFieald != 0:
-            try:
-                gui_restart(mainFiles)
-            except:
-                pass
+        #oldwidth = event.oldSize().width()
+        #self.oldmaxInField = (math.floor(oldwidth / iconsizeX))
 
+        width = self.scrollArea.frameGeometry().width()
+        self.maxInField = (math.floor(width / iconsizeX))
+
+        #print(self.maxInField)
+
+        if self.maxInField != self.oldmaxInField and self.maxInField != 0:
+           self.gui_restart(self.mainFiles)
+
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        for f in files:
+            shutil.copyfile(f, folderDest + "/" + os.path.basename(f))
+        self.onbrowseBtn(self.folderDest)
+        self.gui_restart(self.mainFiles)
 
     def sldReconnect(self):
-        global isSliderConnected
-        isSliderConnected = True
-        stopVideo(0.5)
-        currentFrame = math.ceil(self.sender().value() / 100 * frameCount)
-        startVideo(config.get("settings", "oldfile"), currentFrame)
-
-
-
+        self.isSliderConnected = True
+        self.stopVideo(0.1)
+        currentFrame = math.ceil(self.sender().value() / 100 * self.frameCount)
+        self.startVideo(self.config.get("settings", "oldfile"), currentFrame)
 
     def sldDisconnect(self):
-        global isSliderConnected
-        isSliderConnected = False
+        self.isSliderConnected = False
+
+    def searchEvent(self, text):
+        self.searchFiles = []
+        for i in self.mainFiles:
+            if i.lower().find(text.lower()) != -1:
+                self.searchFiles.append(i)
+
+        self.gui_restart(self.searchFiles)
+
+    def onbrowseBtn(self, folder=None):
+
+        if folder:
+            self.folderDest = folder
+        else:
+            self.folderDest = QFileDialog.getExistingDirectory()
+
+        self.config = configparser.ConfigParser()
+        self.config['settings'] = {}
+        self.config['settings']['old_path_to_folder'] = self.folderDest
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
+
+        if self.folderDest != "":
+            self.label.setText(self.folderDest)
+            self.readfiles = os.listdir(self.folderDest)
+            self.mainFiles = []
+            for i in self.readfiles:
+                filename, file_extension = os.path.splitext(i)
+                if file_extension == ".mp4":
+                    self.mainFiles.append(i)
+
+            for i in self.mainFiles:
+                filename, file_extension = os.path.splitext(i)
+                vidcap = cv2.VideoCapture(str(self.folderDest) + "/" + str(i))
+                success, image = vidcap.read()
+                success, im_buf_arr = cv2.imencode(".jpg", image)
+                if success:
+                    im_buf_arr.tofile(maindir + filename + ".jpg")
+
+            self.gui_restart(self.mainFiles)
+
+    def gui_restart(self, mainFiles):
+        for i in reversed(range(self.lay.count())):
+            self.lay.itemAt(i).widget().setParent(None)
+
+        count = 0
+
+        self.buttons = []
+
+        for i in mainFiles:
+            filename = os.path.splitext(i)[0]
+            button = QPushButton()
+
+            button.setToolTip(filename + ".mp4")
+            button.clicked.connect(lambda ch, buttonCount=count: self.onSelect(buttonCount))
+            button.setIcon(QIcon(maindir + filename + ".jpg"))
+            button.setIconSize(QSize(iconsizeX, iconsizeY))
+            button.setMinimumSize(iconsizeX, iconsizeY)
+            button.setMaximumSize(iconsizeX, iconsizeY)
 
 
+            width = self.scrollArea.frameGeometry().width()
+            self.maxInField = (math.floor(width / iconsizeX))
 
+            self.oldmaxInField = self.maxInField
+
+            #print(self.maxInField)
+
+            out = count / self.maxInField
+            out = (math.floor(out))
+            self.lay.addWidget(button, out, count - out * self.maxInField)
+
+            count = count + 1
+            self.buttons.append(button)
+
+    def onSelect(self, buttonCount):
+
+        #butObj = self.buttons[buttonCount]
+        #print(self.mainFiles[buttonCount])
+        print(self.searchFiles)
+        if self.searchFiles != []:
+            self.startVideo(self.folderDest + "/" + self.searchFiles[buttonCount])
+            self.statusbar.setText(self.searchFiles[buttonCount])
+        else:
+            self.startVideo(self.folderDest + "/" + self.mainFiles[buttonCount])
+            self.statusbar.setText(self.mainFiles[buttonCount])
+
+    def startVideo(self, filename, currentFrame=0):
+        # print("work")
+        self.stopVideo(0.1)
+        x = threading.Thread(target=self.mainThread, args=(filename, currentFrame))
+        x.start()
+
+    def stopVideo(self, delay=0.5):
+        try:
+            self.run = False
+            time.sleep(delay)
+            self.run = True
+        except:
+            pass
+
+    def mainThread(self, filename, currentFrame):
+        cap = cv2.VideoCapture(filename)
+        self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.frameFPS = int(cap.get(cv2.CAP_PROP_FPS))
+
+        self.config.set("settings", "oldfile", filename)
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
+
+        cam = pyvirtualcam.Camera(self.frameWidth, self.frameHeight, self.frameFPS)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, currentFrame)
+        while currentFrame < self.frameCount and self.run == True:
+            self.slider.setHidden(False)
+
+            self.timeCount.setText(
+                str(math.ceil(currentFrame / self.frameFPS)) + "/" + str(
+                    math.ceil(self.frameCount / self.frameFPS)) + " sec")
+            if isSliderConnected == True:
+                self.slider.setValue(math.ceil(currentFrame / self.frameCount * 100))
+
+            _, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            cam.send(frame)
+            cam.sleep_until_next_frame()
+            currentFrame = currentFrame + 1
+
+        cam.close()
+        self.stopVideo(0)
+        if self.checkBox.isChecked() and currentFrame == self.frameCount:
+            # stopVideo(0.5)
+            # startVideo(config.get("settings", "oldfile"), 0)
+            self.startVideo(filename, 0)
 
     def initUI(self):
         self.setGeometry(800, 500, 800, 500)
         self.setWindowTitle('CameraController')
         self.setStyleSheet(qdarkstyle.load_stylesheet())
+
         self.resized.connect(self.resizeEvent)
         self.setWindowIcon(QIcon('ico.ico'))
+        self.setAcceptDrops(True)
+
+        self.maxInField = 5
+        self.oldmaxInField = 5
+        self.searchFiles = []
 
         # Main Layout
-        global layout
-        layout = QGridLayout()
+
+        self.layout = QGridLayout()
 
         # Top Buttons Layout
-        topLayout = QHBoxLayout()
+        self.topLayout = QHBoxLayout()
 
         # Bot status layout
-        botLayout = QHBoxLayout()
+        self.botLayout = QHBoxLayout()
 
         # Status bar
 
-        global statusbar
-        statusbar = QLabel()
-        statusbar.setDisabled(True)
-        botLayout.addWidget(statusbar)
+        self.statusbar = QLabel()
+        self.statusbar.setDisabled(True)
+        self.botLayout.addWidget(self.statusbar)
+
+        # BrowseButton
+        self.browseBtn = QPushButton("Browse")
+        self.browseBtn.setFixedSize(60, 20)
+        self.browseBtn.clicked.connect(self.onbrowseBtn)
+        # self.browseBtn.clicked.connect(lambda checked: self._on_clicked_cell(button, i, j)
+
+        # Search input
+
+        searchInput = QLineEdit()
+        searchInput.setPlaceholderText("Search")
+        searchInput.textChanged.connect(self.searchEvent)
 
 
+        self.label = QLabel("Please choose your folder with videos")
 
+        # CheckBox
 
-        #BrowseButton
-        browseBtn = QPushButton("Browse")
-        browseBtn.setFixedSize(60, 20)
-        browseBtn.clicked.connect(onbrowseBtn)
+        self.checkBox = QCheckBox("Repeat video")
 
-        #label
-        global label
-        label = QLabel("Please choose your folder with videos")
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setHidden(True)
+        # slider.valueChanged.connect(self.sliderChanged)
+        self.slider.sliderPressed.connect(self.sldDisconnect)
+        self.slider.sliderReleased.connect(self.sldReconnect)
 
-        #CheckBox
-        global checkBox
-        checkBox = QCheckBox("Repeat video")
-
-
-        global slider
-        slider = QSlider(Qt.Horizontal)
-        slider.setHidden(True)
-        #slider.valueChanged.connect(self.sliderChanged)
-        slider.sliderPressed.connect(self.sldDisconnect)
-        slider.sliderReleased.connect(self.sldReconnect)
-
-
-        global timeCount
-        timeCount = QLabel()
-
+        self.timeCount = QLabel()
 
         # scroll area
-        global scrollArea
-        scrollArea = QScrollArea()
-        scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         content_widget = QWidget()
-        scrollArea.setWidget(content_widget)
-        scrollArea.setWidgetResizable(True)
-        global lay
-        lay = QGridLayout(content_widget)
-        lay.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        self.scrollArea.setWidget(content_widget)
+        self.scrollArea.setWidgetResizable(True)
 
+        self.lay = QGridLayout(content_widget)
+        self.lay.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
-        #add widgets
-        topLayout.addWidget(browseBtn)
-        topLayout.addWidget(label)
-        topLayout.addWidget(checkBox,Qt.AlignLeft)
-        botLayout.addWidget(timeCount)
-        botLayout.addWidget(slider)
-        layout.addLayout(topLayout, 2, 0)
-        layout.addWidget(scrollArea, 4, 0)
-        layout.addLayout(botLayout, 6, 0)
+        # add widgets
+        self.topLayout.addWidget(self.browseBtn)
+        self.topLayout.addWidget(self.label)
+        self.topLayout.addWidget(self.checkBox, Qt.AlignLeft)
+        # topLayout.addWidget(searchLabel,Qt.AlignRight)
 
+        self.topLayout.addWidget(searchInput, Qt.AlignRight)
 
+        self.botLayout.addWidget(self.timeCount)
+        self.botLayout.addWidget(self.slider)
+        self.layout.addLayout(self.topLayout, 2, 0)
+        self.layout.addWidget(self.scrollArea, 4, 0)
+        self.layout.addLayout(self.botLayout, 6, 0)
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
-        global config
-        config = configparser.ConfigParser()
-        config.read('config.ini')
+        self.config = configparser.ConfigParser()
+        self.config.read('config.ini')
+
         try:
-            onbrowseBtn(folder=config['settings']["old_path_to_folder"])
+            self.onbrowseBtn(folder=self.config['settings']["old_path_to_folder"])
         except:
             pass
 
-
         self.show()
-
-
-
-
-
-
-def onbrowseBtn(folder=None):
-    global folderDest
-    if folder != False:
-        folderDest = folder
-    else:
-        folderDest = QFileDialog.getExistingDirectory()
-
-    config = configparser.ConfigParser()
-    config['settings'] = {}
-    config['settings']['old_path_to_folder'] = folderDest
-    with open('config.ini', 'w') as configfile:
-        config.write(configfile)
-
-    if folderDest != "":
-        label.setText(folderDest)
-        readfiles = os.listdir(folderDest)
-
-        global mainFiles
-        mainFiles = []
-        for i in readfiles:
-            filename, file_extension = os.path.splitext(i)
-            if file_extension == ".mp4":
-                mainFiles.append(i)
-
-        for i in mainFiles:
-            filename, file_extension = os.path.splitext(i)
-            vidcap = cv2.VideoCapture(str(folderDest) + "/" + str(i))
-            success, image = vidcap.read()
-            success, im_buf_arr = cv2.imencode(".jpg", image)
-            if success:
-                im_buf_arr.tofile(maindir + filename + ".jpg")
-
-        gui_restart(mainFiles)
-
-
-def gui_restart(mainFiles):
-    for i in reversed(range(lay.count())):
-        lay.itemAt(i).widget().setParent(None)
-
-    count = 0
-    global buttons
-    buttons = []
-
-    for i in mainFiles:
-        filename = os.path.splitext(i)[0]
-        button = QPushButton()
-        label = QLabel()
-        button.setToolTip(filename + ".mp4")
-        button.clicked.connect(lambda ch, buttonCount=count: onSelect(buttonCount))
-        button.setIcon(QIcon(maindir + filename + ".jpg"))
-        button.setIconSize(QSize(iconsizeX, iconsizeY))
-        button.setMinimumSize(iconsizeX, iconsizeY)
-        button.setMaximumSize(iconsizeX, iconsizeY)
-        global oldmaxInFieald
-        oldmaxInFieald = maxInFieald
-
-        out = count / maxInFieald
-        out = (math.floor(out))
-        lay.addWidget(button, out, count - out * maxInFieald)
-
-
-
-        count = count + 1
-        buttons.append(button)
-
-
-
-def onSelect(buttonCount):
-    global butObj
-    butObj = buttons[buttonCount]
-    startVideo(folderDest + "/" + mainFiles[buttonCount])
-
-
-    statusbar.setText(mainFiles[buttonCount])
-
-
-def startVideo(filename, currentFrame = 0):
-    stopVideo(1)
-    x = threading.Thread(target=mainThread, args=(filename, currentFrame))
-    x.start()
-
-
-
-def stopVideo(delay = 0.5):
-    try:
-        global run
-        run = False
-        time.sleep(delay)
-        run = True
-        cam.close()
-    except:
-        pass
-
-
-
-def mainThread(filename, currentFrame):
-    global frameCount
-    global cam
-
-    cap = cv2.VideoCapture(filename)
-    frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frameFPS = int(cap.get(cv2.CAP_PROP_FPS))
-
-
-    config.set("settings", "oldfile", filename)
-    with open('config.ini', 'w') as configfile:
-        config.write(configfile)
-
-
-    cam = pyvirtualcam.Camera(frameWidth, frameHeight, frameFPS)
-
-
-
-    cap.set(cv2.CAP_PROP_POS_FRAMES, currentFrame)
-    while currentFrame < frameCount and run == True:
-        slider.setHidden(False)
-
-        timeCount.setText(str(math.ceil(currentFrame/frameFPS))+"/"+str(math.ceil(frameCount/frameFPS))+" sec")
-        if isSliderConnected == True:
-            slider.setValue(math.ceil(currentFrame/frameCount*100))
-
-        _, frame = cap.read()
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        cam.send(frame)
-        cam.sleep_until_next_frame()
-        currentFrame = currentFrame + 1
-
-
-    stopVideo(1)
-    if checkBox.isChecked():
-        #stopVideo(0.5)
-        startVideo(config.get("settings", "oldfile"), 0)
-
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Main()
     sys.exit(app.exec_())
-
-
-
-
-
-
-
