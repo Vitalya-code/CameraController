@@ -5,12 +5,14 @@ import threading
 import time
 import pyvirtualcam
 import qdarkstyle
+
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
     QFileDialog, QCheckBox, QSlider, QLineEdit
+
 import cv2
 import configparser
 import shutil
@@ -58,7 +60,6 @@ class Main(QWidget):
         width = self.scrollArea.frameGeometry().width()
         self.maxInField = (math.floor(width / iconsizeX))
 
-        #print(self.maxInField)
 
         if self.maxInField != self.oldmaxInField and self.maxInField != 0:
            self.gui_restart(self.mainFiles)
@@ -73,7 +74,9 @@ class Main(QWidget):
     def dropEvent(self, event):
         files = [u.toLocalFile() for u in event.mimeData().urls()]
         for f in files:
-            shutil.copyfile(f, folderDest + "/" + os.path.basename(f))
+            print(self.folderDest + "/" + os.path.basename(f))
+
+            shutil.copyfile(f, self.folderDest + "/" + os.path.basename(f))
         self.onbrowseBtn(self.folderDest)
         self.gui_restart(self.mainFiles)
 
@@ -139,6 +142,7 @@ class Main(QWidget):
             button = QPushButton()
 
             button.setToolTip(filename + ".mp4")
+
             button.clicked.connect(lambda ch, buttonCount=count: self.onSelect(buttonCount))
             button.setIcon(QIcon(maindir + filename + ".jpg"))
             button.setIconSize(QSize(iconsizeX, iconsizeY))
@@ -151,7 +155,6 @@ class Main(QWidget):
 
             self.oldmaxInField = self.maxInField
 
-            #print(self.maxInField)
 
             out = count / self.maxInField
             out = (math.floor(out))
@@ -161,10 +164,8 @@ class Main(QWidget):
             self.buttons.append(button)
 
     def onSelect(self, buttonCount):
-
         #butObj = self.buttons[buttonCount]
         #print(self.mainFiles[buttonCount])
-        print(self.searchFiles)
         if self.searchFiles != []:
             self.startVideo(self.folderDest + "/" + self.searchFiles[buttonCount])
             self.statusbar.setText(self.searchFiles[buttonCount])
@@ -173,7 +174,6 @@ class Main(QWidget):
             self.statusbar.setText(self.mainFiles[buttonCount])
 
     def startVideo(self, filename, currentFrame=0):
-        # print("work")
         self.stopVideo(0.1)
         x = threading.Thread(target=self.mainThread, args=(filename, currentFrame))
         x.start()

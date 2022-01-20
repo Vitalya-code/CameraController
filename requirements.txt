@@ -1,6 +1,6 @@
-PyQt5==5.15.6
-qdarkstyle==3.0.2
+PyQt5
+qdarkstyle
 pyvirtualcam
-opencv-python==4.5.4.58
+opencv-python
 opencv-python-headless
 opencv-contrib-python-headless
