@@ -17,22 +17,28 @@ OutputBaseFilename=CameraController
 Source: "main.pyw"; DestDir: "{app}"
 Source: "requirements.txt"; DestDir: "{app}"
 Source: "ico.ico"; DestDir: "{app}"
-Source: "start.bat"; DestDir: "{app}";
-Source: "start.sh"; DestDir: "{app}"; 
-Source: "python-3.9.7.exe"; DestDir: "{app}"; Flags: deleteafterinstall;  
+Source: "setup.py"; DestDir: "{app}"; 
+Source: "run.py"; DestDir: "{app}"; 
+Source: "python-3.9.7.exe"; DestDir: "{app}"; Flags: deleteafterinstall; 
+Source: "setup.bat"; DestDir: "{app}";
+Source: "run.bat"; DestDir: "{app}"; 
+
+
 
 [Icons]
-Name: "{commondesktop}\CameraController"; Filename: "{app}\main.pyw"; IconFilename: "{app}\ico.ico"; 
+Name: "{commondesktop}\CameraController"; Filename: "{app}\run.bat"; IconFilename: "{app}\ico.ico"; 
 
 [Tasks]
 Name: python_task; Description: "Install python(recommended)"; GroupDescription: "Additional tasks:";
 
 [Run]
-Filename: "{app}\python-3.9.7.exe"; \
+Filename: "{app}\python-3.9.7.exe"; StatusMsg: "Installing python..."; \
 Parameters: "/passive InstallAllUsers=1 PrependPath=1"; \
 WorkingDir: "{app}"; Flags: 32bit; Check: install_python
-Filename: "pip.exe"; Parameters: "install -r {app}\requirements.txt"; StatusMsg: "Installing requirements...";
+//Filename: "pip.exe"; Parameters: "install -r {app}\requirements.txt"; StatusMsg: "Installing requirements...";
+Filename: "{app}\setup.bat";StatusMsg: "Installing requirements...";
 
+//
 
 [Code]
 function install_python() : Boolean;

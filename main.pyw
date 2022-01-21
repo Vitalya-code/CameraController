@@ -3,15 +3,17 @@ import os
 import sys
 import threading
 import time
+
+import PyQt5
 import pyvirtualcam
 import qdarkstyle
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QCursor
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox, QSlider, QLineEdit
+    QFileDialog, QCheckBox, QSlider, QLineEdit, QMenu
 
 import cv2
 import configparser
@@ -62,7 +64,10 @@ class Main(QWidget):
 
 
         if self.maxInField != self.oldmaxInField and self.maxInField != 0:
-           self.gui_restart(self.mainFiles)
+           try:
+               self.gui_restart(self.mainFiles)
+           except:
+               pass
 
 
     def dragEnterEvent(self, event):
@@ -96,6 +101,9 @@ class Main(QWidget):
                 self.searchFiles.append(i)
 
         self.gui_restart(self.searchFiles)
+
+
+
 
     def onbrowseBtn(self, folder=None):
 
@@ -141,6 +149,8 @@ class Main(QWidget):
             filename = os.path.splitext(i)[0]
             button = QPushButton()
 
+
+
             button.setToolTip(filename + ".mp4")
 
             button.clicked.connect(lambda ch, buttonCount=count: self.onSelect(buttonCount))
@@ -159,6 +169,8 @@ class Main(QWidget):
             out = count / self.maxInField
             out = (math.floor(out))
             self.lay.addWidget(button, out, count - out * self.maxInField)
+
+
 
             count = count + 1
             self.buttons.append(button)
