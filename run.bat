@@ -1,1 +1,1 @@
-python run.py
+start python run.py

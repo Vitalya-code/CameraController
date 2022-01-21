@@ -4,4 +4,4 @@ import platform
 if platform.system() == "Linux":
     os.system("venv/bin/python main.pyw")
 else:
-    os.system("venv\Scripts\python.exe main.pyw")
+    os.system("start venv\Scripts\pythonw.exe main.pyw")
