@@ -3,17 +3,14 @@ import os
 import sys
 import threading
 import time
-
-import PyQt5
 import pyvirtualcam
 import qdarkstyle
-
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QIcon, QCursor
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox, QSlider, QLineEdit, QMenu
+    QFileDialog, QCheckBox, QSlider, QLineEdit
 
 import cv2
 import configparser
@@ -95,12 +92,15 @@ class Main(QWidget):
         self.isSliderConnected = False
 
     def searchEvent(self, text):
-        self.searchFiles = []
-        for i in self.mainFiles:
-            if i.lower().find(text.lower()) != -1:
-                self.searchFiles.append(i)
+        try:
+            self.searchFiles = []
+            for i in self.mainFiles:
+                if i.lower().find(text.lower()) != -1:
+                    self.searchFiles.append(i)
 
-        self.gui_restart(self.searchFiles)
+            self.gui_restart(self.searchFiles)
+        except:
+            pass
 
 
 

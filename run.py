@@ -1,3 +1,7 @@
 import os
+import platform
 
-os.system("venv\Scripts\python.exe main.pyw")
+if platform.system() == "Linux":
+    os.system("venv/bin/python main.pyw")
+else:
+    os.system("venv\Scripts\python.exe main.pyw")
