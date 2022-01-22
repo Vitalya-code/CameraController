@@ -5,12 +5,12 @@ import threading
 import time
 import pyvirtualcam
 import qdarkstyle
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QHBoxLayout, QScrollArea, QPushButton, QLabel, \
-    QFileDialog, QCheckBox, QSlider, QLineEdit
+    QFileDialog, QCheckBox, QSlider, QLineEdit, QMenu, QAction, qApp, QMessageBox
 
 import cv2
 import configparser
@@ -22,11 +22,7 @@ iconsizeX = 350
 iconsizeY = 200
 isSliderConnected = True
 
-appStyle="""
-QMainWindow{
-background-color: darkgray;
-}
-"""
+
 
 # init in system
 try:
@@ -106,7 +102,7 @@ class Main(QWidget):
 
 
     def onbrowseBtn(self, folder=None):
-
+        self.searchInput.setHidden(False)
         if folder:
             self.folderDest = folder
         else:
@@ -137,6 +133,8 @@ class Main(QWidget):
 
             self.gui_restart(self.mainFiles)
 
+
+
     def gui_restart(self, mainFiles):
         for i in reversed(range(self.lay.count())):
             self.lay.itemAt(i).widget().setParent(None)
@@ -149,6 +147,11 @@ class Main(QWidget):
             filename = os.path.splitext(i)[0]
             button = QPushButton()
 
+
+            # button.setContextMenuPolicy(Qt.ActionsContextMenu)
+            # quitAction = QAction("🗑️Remove", self)
+            # quitAction.triggered.connect(lambda ch, buttonCount=count: self.contextMenu(self, buttonCount))
+            # button.addAction(quitAction)
 
 
             button.setToolTip(filename + ".mp4")
@@ -233,6 +236,8 @@ class Main(QWidget):
             # startVideo(config.get("settings", "oldfile"), 0)
             self.startVideo(filename, 0)
 
+
+
     def initUI(self):
         self.setGeometry(800, 500, 800, 500)
         self.setWindowTitle('CameraController')
@@ -270,9 +275,10 @@ class Main(QWidget):
 
         # Search input
 
-        searchInput = QLineEdit()
-        searchInput.setPlaceholderText("Search")
-        searchInput.textChanged.connect(self.searchEvent)
+        self.searchInput = QLineEdit()
+        self.searchInput.setPlaceholderText("Search")
+        self.searchInput.textChanged.connect(self.searchEvent)
+        self.searchInput.setHidden(True)
 
 
         self.label = QLabel("Please choose your folder with videos")
@@ -306,7 +312,7 @@ class Main(QWidget):
         self.topLayout.addWidget(self.checkBox, Qt.AlignLeft)
         # topLayout.addWidget(searchLabel,Qt.AlignRight)
 
-        self.topLayout.addWidget(searchInput, Qt.AlignRight)
+        self.topLayout.addWidget(self.searchInput, Qt.AlignRight)
 
         self.botLayout.addWidget(self.timeCount)
         self.botLayout.addWidget(self.slider)
@@ -329,5 +335,8 @@ class Main(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+
+
+
     ex = Main()
     sys.exit(app.exec_())
