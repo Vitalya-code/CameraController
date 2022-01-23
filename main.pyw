@@ -84,6 +84,7 @@ class Main(QWidget):
         currentFrame = math.ceil(self.sender().value() / 100 * self.frameCount)
         self.startVideo(self.config.get("settings", "oldfile"), currentFrame)
 
+
     def sldDisconnect(self):
         self.isSliderConnected = False
 
@@ -289,8 +290,9 @@ class Main(QWidget):
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setHidden(True)
-        # slider.valueChanged.connect(self.sliderChanged)
-        self.slider.sliderPressed.connect(self.sldDisconnect)
+
+
+        self.slider.sliderReleased.connect(self.sldDisconnect)
         self.slider.sliderReleased.connect(self.sldReconnect)
 
         self.timeCount = QLabel()
