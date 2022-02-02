@@ -26,14 +26,18 @@ isSliderConnected = True
 
 # init in system
 try:
-    maindir = os.environ.get('temp') + "\img"
-    os.mkdir(os.environ.get('temp') + "\img")
     osName = os.uname()
     if str(osName[0]) == "Linux":
-        os.system("sudo modprobe -r v4l2loopback")
-        os.system("sudo modprobe v4l2loopback")
+        maindir = '/tmp/img/'
+        os.system("sudo -S modprobe  v4l2loopback")
+        os.system("sudo -S mkdir /tmp/img/")
+
+    else:
+        maindir = os.environ.get('temp') + "\img"
+        os.mkdir(os.environ.get('temp') + "\img")
 except:
     pass
+
 
 
 class Main(QWidget):
