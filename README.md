@@ -2,8 +2,8 @@
 
 
 Требования:
--OBS studio
--Python
+  OBS studio
+  Python
 
 Запуск:
 Запускаете файл setup.py а потом run.py
