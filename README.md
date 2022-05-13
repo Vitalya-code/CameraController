@@ -5,7 +5,7 @@
 -OBS studio
 
 Запуск:
-Запускаете инсталятор и он все делает за вас
+Запускаете файл setup.py а потом run.py
 
 
 ![Capture](https://user-images.githubusercontent.com/58048618/143689717-7d9de201-e5d3-420e-a3eb-501deaecb0bc.PNG)
