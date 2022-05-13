@@ -3,6 +3,7 @@
 
 Требования:
 -OBS studio
+-Python
 
 Запуск:
 Запускаете файл setup.py а потом run.py
