@@ -1,6 +1,0 @@
-PyQt5
-qdarkstyle
-pyvirtualcam
-opencv-python
-opencv-python-headless
-opencv-contrib-python-headless
