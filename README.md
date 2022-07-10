@@ -1,10 +1,10 @@
-This is a program for virtual camera manipulation
+Программа для контроля виртуальной камеры, проще говоря у вас в дискорде(или в другой проге) может проигрываться видео прямо на вебке.
 
 
-Requirements: OBS studio, Python
+Требования: OBS studio, Python
 
-Start:
-Just run this file "setup.py" and after this "run.py"
+Запуск:
+Запускаете файл setup.py а потом run.py
 
 
 ![Capture](https://user-images.githubusercontent.com/58048618/143689717-7d9de201-e5d3-420e-a3eb-501deaecb0bc.PNG)
