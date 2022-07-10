@@ -1,6 +1,0 @@
-PyQt6
-pyqtdarktheme
-pyvirtualcam
-opencv-python
-opencv-python-headless
-opencv-contrib-python-headless
